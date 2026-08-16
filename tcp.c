@@ -7,11 +7,26 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <errno.h>
 
-int MAX_LICENCES = 10;
 int PORT = 8080;
 int MAX_LENGTH = 1024;
 int backlog = 5;
+volatile sig_atomic_t shutdown_flag = 0;
+
+typedef struct {
+    // mutex, active_count, max_clients, shutdown_flag
+    pthread_mutex_t lock;
+    int active_count;
+    int max_clients;
+    volatile sig_atomic_t shutdown_flag;
+} shared_state_t;
+
+typedef struct {
+    // client_fd, pointer to shared_state_t
+    int client_fd;
+    shared_state_t *shared;
+} client_arg_t;
 
 int create_and_bind_socket(int port) {
     int server_fd;
@@ -33,20 +48,81 @@ int create_and_bind_socket(int port) {
     return server_fd;
 }
 
-int main(int arc, int *argv[])
+void sigint_handler(int signo) {
+    shutdown_flag = 1;
+}
+
+int client_handler(void *arg)
 {
-    int connections;
-    while (1)
-    {
-    if (connections < MAX_LICENCES)
-    {
-        connections +=1;
-        
-    }   
-    else
-    {
-        perror("all connection in use");
-    }
-    }
+    // pthread_create();
+    // SO_RCVTIMEO();
+    // recv();
+
+    // close();
     return 0;
+}
+
+
+int wait_for_active_connection()
+{
+    return 0;
+}
+
+int main(int arc, char *argv[])
+{
+    pthread_t thread;
+    shared_state_t state;
+    state.active_count = 0;
+    state.max_clients = 10;
+    state.shutdown_flag = 0;
+    struct sockaddr_in client_addr;
+    int client_fd;
+    int mutex_result = pthread_mutex_init(&state.lock, NULL);
+    if (mutex_result != 0) { perror("mutex init fa  iled"); return -1; }
+    signal(SIGINT, sigint_handler);
+    int listen_fd = create_and_bind_socket(PORT);
+    if (listen_fd == -1){perror("failled to bind/ crete socket"); return -1;}
+    while (1) {
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    client_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &client_len);
+
+    if (client_fd == -1) {
+        if (errno == EINTR) {
+            if (shutdown_flag) {
+                break;
+            }
+            continue;
+        } else {
+            perror("accept failed");
+            continue;
+        }
+    } else {
+        pthread_mutex_lock(&state.lock);
+        if (state.active_count < state.max_clients) {
+            state.active_count++;
+            pthread_mutex_unlock(&state.lock);
+
+            client_arg_t *new_client = malloc(sizeof(client_arg_t));
+            if (new_client == NULL) {
+                perror("malloc failed");
+                close(client_fd);
+                continue;
+            }
+            new_client->client_fd = client_fd;
+            new_client->shared = &state;
+
+            pthread_create(&thread, NULL, client_handler, new_client);
+            pthread_detach(thread);
+        } else {
+            pthread_mutex_unlock(&state.lock);
+            printf("no more connections left\n");
+            close(client_fd);
+        }
+    }
+}
+
+close(listen_fd);
+wait_for_active_connections(&state, 5);
+return 0;
 }
