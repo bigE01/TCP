@@ -103,6 +103,7 @@ void wait_for_active_connections(shared_state_t *state, int timeout_seconds)
 {
     int count = 0;
     int max_iterations = (timeout_seconds * 1000) / 100;
+    struct timespec ts = {0, 100000000L};  // 100,000,000 ns = 100ms
     while(1){
         pthread_mutex_lock(&state->lock);
         int some_value = state->active_count;
@@ -110,7 +111,7 @@ void wait_for_active_connections(shared_state_t *state, int timeout_seconds)
         if(some_value == 0){return;}//no connections open
         if(count == max_iterations){return;}//maximum amount of itiration
 
-        usleep(100000);  // sleep 100ms
+        nanosleep(&ts, NULL);// sleep 100ms
         count++;
     }
 }
@@ -122,7 +123,6 @@ int main(int arc, char *argv[])
     state.active_count = 0;
     state.max_clients = 10;
     state.shutdown_flag = 0;
-    struct sockaddr_in client_addr;
     int client_fd;
     int mutex_result = pthread_mutex_init(&state.lock, NULL);
     if (mutex_result != 0) { perror("mutex init fa  iled"); return -1; }
