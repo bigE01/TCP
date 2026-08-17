@@ -157,6 +157,6 @@ int main(int arc, char *argv[])
 }
 
 close(listen_fd);
-wait_for_active_connections(&state, 5);
+wait_for_active_connection(&state, 5);
 return 0;
 }
