@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <sys/time.h>
 
 int PORT = 8080;
 int MAX_LENGTH = 1024;
@@ -41,8 +42,10 @@ int create_and_bind_socket(int port) {
     server_addr.sin_family=AF_INET;
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = htons(port);
+    //binds to the port
     int bind_result = bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
     if (bind_result < 0) { perror("failled to bind socket"); exit(EXIT_FAILURE); }
+    //listens for a data
     int listener = listen(server_fd, backlog);
     if (listener < 0){perror("listening failed"); return -1;}
     return server_fd;
@@ -52,14 +55,45 @@ void sigint_handler(int signo) {
     shutdown_flag = 1;
 }
 
-int client_handler(void *arg)
+void *client_handler(void *arg)
 {
-    // pthread_create();
-    // SO_RCVTIMEO();
-    // recv();
-
-    // close();
-    return 0;
+    client_arg_t *my_arg = (client_arg_t *)arg;
+    int fd = my_arg->client_fd;
+    char buff[MAX_LENGTH];
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    shared_state_t *shared = my_arg->shared;
+    while(1)
+    {
+        ssize_t bytes = recv(fd, buff, sizeof(buff), 0);
+        if (bytes > 0) {
+        // echo back, maybe printf/log
+        send(fd, buff, bytes, 0);
+        } else if (bytes == 0) {
+        break;  // peer disconnected
+        } 
+        else 
+        {
+            if (errno == EWOULDBLOCK || errno == EAGAIN) 
+            {
+                if (shutdown_flag) break;
+                    continue;
+            } 
+            else   
+            {
+                perror("recv failed");
+                break;
+            }
+        }
+    }
+    close(fd);
+    pthread_mutex_lock(&shared->lock);
+    shared->active_count--;
+    pthread_mutex_unlock(&shared->lock);
+    free(my_arg);
+    return NULL;
 }
 
 
