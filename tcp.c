@@ -99,7 +99,20 @@ void *client_handler(void *arg)
 
 void wait_for_active_connections(shared_state_t *state, int timeout_seconds)
 {
-    return 0;
+    while(1){
+        pthread_mutex_lock(&state->lock);
+        int some_value = state->active_count;
+        pthread_mutex_unlock(&state->lock);
+        if(some_value == 0)
+        {
+            return;
+        }
+        else
+        {
+            continue;
+        }
+    sleep(timeout_seconds);
+    }
 }
 
 int main(int arc, char *argv[])
