@@ -99,19 +99,17 @@ void *client_handler(void *arg)
 
 void wait_for_active_connections(shared_state_t *state, int timeout_seconds)
 {
+    int count = 0;
+    int max_iterations = (timeout_seconds * 1000) / 100;
     while(1){
         pthread_mutex_lock(&state->lock);
         int some_value = state->active_count;
         pthread_mutex_unlock(&state->lock);
-        if(some_value == 0)
-        {
-            return;
-        }
-        else
-        {
-            continue;
-        }
-    sleep(timeout_seconds);
+        if(some_value == 0){return;}//no connections open
+        if(count == max_iterations){return;}//maximum amount of itiration
+
+        usleep(100000);  // sleep 100ms
+        count++;
     }
 }
 
