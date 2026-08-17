@@ -97,7 +97,7 @@ void *client_handler(void *arg)
 }
 
 
-int wait_for_active_connection()
+void wait_for_active_connections(shared_state_t *state, int timeout_seconds)
 {
     return 0;
 }
@@ -157,6 +157,6 @@ int main(int arc, char *argv[])
 }
 
 close(listen_fd);
-//wait_for_active_connection(&state, 5);
+wait_for_active_connection(&state, 5);
 return 0;
 }
