@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -124,8 +126,14 @@ int main(int arc, char *argv[])
     int client_fd;
     int mutex_result = pthread_mutex_init(&state.lock, NULL);
     if (mutex_result != 0) { perror("mutex init fa  iled"); return -1; }
-    signal(SIGINT, sigint_handler);
-    signal(SIGTERM, sigint_handler);
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = sigint_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;  // deliberately no SA_RESTART
+
+sigaction(SIGINT, &sa, NULL);
+sigaction(SIGTERM, &sa, NULL);
     int listen_fd = create_and_bind_socket(PORT);
     if (listen_fd == -1){perror("failled to bind/ crete socket"); return -1;}
     while (1) {
