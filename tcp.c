@@ -125,6 +125,7 @@ int main(int arc, char *argv[])
     int mutex_result = pthread_mutex_init(&state.lock, NULL);
     if (mutex_result != 0) { perror("mutex init fa  iled"); return -1; }
     signal(SIGINT, sigint_handler);
+    signal(SIGTERM, sigint_handler);
     int listen_fd = create_and_bind_socket(PORT);
     if (listen_fd == -1){perror("failled to bind/ crete socket"); return -1;}
     while (1) {
