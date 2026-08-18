@@ -17,6 +17,7 @@ int MAX_LENGTH = 1024;
 int backlog = 5;
 volatile sig_atomic_t shutdown_flag = 0;
 
+//testing comment
 typedef struct {
     // mutex, active_count, max_clients, shutdown_flag
     pthread_mutex_t lock;
